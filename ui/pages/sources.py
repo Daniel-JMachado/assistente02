@@ -46,7 +46,15 @@ def render_site_panel():
         if st.session_state.documento.get('tipo', '').endswith('(erro)'):
             status_placeholder.error(st.session_state.documento.get('conteudo', 'Erro ao carregar o site.'))
         else:
-            status_placeholder.success("Site carregado!")
+            status_placeholder.markdown(
+                """
+                <div style="background-color: #d4edda; color: #155724; padding: 10px; 
+                border-radius: 4px; font-size: 16px; font-weight: bold; text-align: center;">
+                ✅ Site carregado com sucesso!
+                </div>
+                """, 
+                unsafe_allow_html=True
+            )
 
 def render_youtube_panel():
     """
@@ -84,7 +92,15 @@ def render_youtube_panel():
         if st.session_state.documento.get('tipo', '').endswith('(erro)'):
             status_placeholder.error(st.session_state.documento.get('conteudo', 'Erro ao carregar o vídeo.'))
         else:
-            status_placeholder.success("Vídeo carregado!")
+            status_placeholder.markdown(
+                """
+                <div style="background-color: #d4edda; color: #155724; padding: 10px; 
+                border-radius: 4px; font-size: 16px; font-weight: bold; text-align: center;">
+                ✅ Vídeo carregado com sucesso!
+                </div>
+                """, 
+                unsafe_allow_html=True
+            )
 
 def render_pdf_panel():
     """
@@ -132,7 +148,15 @@ def render_pdf_panel():
         if documento_info.get('tipo', '').endswith('(erro)'):
             status_placeholder.error(documento_info.get('conteudo', 'Erro ao processar os PDFs.'))
         else:
-            status_placeholder.success("PDFs processado!")
+            status_placeholder.markdown(
+                """
+                <div style="background-color: #d4edda; color: #155724; padding: 10px; 
+                border-radius: 4px; font-size: 16px; font-weight: bold; text-align: center;">
+                ✅ PDFs processados com sucesso!
+                </div>
+                """, 
+                unsafe_allow_html=True
+            )
 
 def render_image_panel():
     """
@@ -170,7 +194,15 @@ def render_image_panel():
         if st.session_state.documento.get('tipo', '').endswith('(erro)'):
             status_placeholder.error(st.session_state.documento.get('conteudo', 'Erro ao analisar a imagem.'))
         else:
-            status_placeholder.success("Imagem analisada!")
+            status_placeholder.markdown(
+                """
+                <div style="background-color: #d4edda; color: #155724; padding: 10px; 
+                border-radius: 4px; font-size: 16px; font-weight: bold; text-align: center;">
+                ✅ Imagem analisada com sucesso!
+                </div>
+                """, 
+                unsafe_allow_html=True
+            )
 
 def render_chat_panel():
     """
@@ -196,7 +228,15 @@ def render_chat_panel():
             'conteudo': ''
         }
         st.session_state.fonte_dados = "Chat"
-        st.sidebar.success("Chat livre ativado!")
+        st.sidebar.markdown(
+            """
+            <div style="background-color: #d4edda; color: #155724; padding: 10px; 
+            border-radius: 4px; font-size: 16px; font-weight: bold; text-align: center;">
+            ✅ Chat livre ativado!
+            </div>
+            """, 
+            unsafe_allow_html=True
+        )
 
 def render_source_interface(fonte):
     """
