@@ -89,7 +89,7 @@ def sidebar_header():
     st.sidebar.markdown(
         """
         <div style="text-align: center; margin-bottom: 10px;">
-            <h3 style="color: #1e88e5; margin-bottom: 5px;">Fonte de Dados</h3> 
+            <h3 style="color: var(--primary-color); margin-bottom: 5px;">Fonte de Dados</h3> 
         </div>
         """, 
         unsafe_allow_html=True
@@ -105,7 +105,7 @@ def source_selector():
     st.sidebar.markdown(
         """
         <div style="margin-bottom: 5px;">  
-        <p style="font-size: 0.85rem; color: #757575;">Escolha o conteúdo para análise</p>
+        <p style="font-size: 0.85rem; color: var(--text-secondary);">Escolha o conteúdo para análise</p>
         </div>
         """,
         unsafe_allow_html=True
@@ -193,7 +193,7 @@ def footer():
     """Renderiza o rodapé da aplicação."""
     st.markdown(
         """
-        <div style="margin-top: 50px; text-align: center; color: #9e9e9e; font-size: 0.8rem;">
+        <div style="margin-top: 50px; text-align: center; color: var(--text-secondary); font-size: 0.8rem;">
             <p>TARS - Assistente para Estudantes by Daniel&Claude</p>
         </div>
         """,

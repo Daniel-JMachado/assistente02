@@ -36,7 +36,14 @@ def render_site_panel():
         
         # Mostra mensagem de carregamento na sidebar
         status_placeholder = st.sidebar.empty()
-        status_placeholder.info("Carregando conteúdo do site...")
+        status_placeholder.markdown(
+            """
+            <div class="info-message">
+                <span>⏳ Carregando conteúdo do site...</span>
+            </div>
+            """, 
+            unsafe_allow_html=True
+        )
         
         # Carrega o site
         st.session_state.documento = carrega_site(url_site)
@@ -44,13 +51,19 @@ def render_site_panel():
         
         # Verifica se houve erro e atualiza o status
         if st.session_state.documento.get('tipo', '').endswith('(erro)'):
-            status_placeholder.error(st.session_state.documento.get('conteudo', 'Erro ao carregar o site.'))
+            status_placeholder.markdown(
+                f"""
+                <div class="error-message">
+                    <span>❌ {st.session_state.documento.get('conteudo', 'Erro ao carregar o site.')}</span>
+                </div>
+                """, 
+                unsafe_allow_html=True
+            )
         else:
             status_placeholder.markdown(
                 """
-                <div style="background-color: #d4edda; color: #155724; padding: 10px; 
-                border-radius: 4px; font-size: 16px; font-weight: bold; text-align: center;">
-                ✅ Site carregado com sucesso!
+                <div class="success-message">
+                    <span>✅ Site carregado com sucesso!</span>
                 </div>
                 """, 
                 unsafe_allow_html=True
@@ -82,7 +95,14 @@ def render_youtube_panel():
         
         # Mostra mensagem de carregamento na sidebar
         status_placeholder = st.sidebar.empty()
-        status_placeholder.info("Carregando transcrição do vídeo...")
+        status_placeholder.markdown(
+            """
+            <div class="info-message">
+                <span>⏳ Carregando transcrição do vídeo...</span>
+            </div>
+            """, 
+            unsafe_allow_html=True
+        )
         
         # Carrega o vídeo
         st.session_state.documento = carrega_youtube(url_youtube)
@@ -90,13 +110,19 @@ def render_youtube_panel():
         
         # Verifica se houve erro e atualiza o status
         if st.session_state.documento.get('tipo', '').endswith('(erro)'):
-            status_placeholder.error(st.session_state.documento.get('conteudo', 'Erro ao carregar o vídeo.'))
+            status_placeholder.markdown(
+                f"""
+                <div class="error-message">
+                    <span>❌ {st.session_state.documento.get('conteudo', 'Erro ao carregar o vídeo.')}</span>
+                </div>
+                """, 
+                unsafe_allow_html=True
+            )
         else:
             status_placeholder.markdown(
                 """
-                <div style="background-color: #d4edda; color: #155724; padding: 10px; 
-                border-radius: 4px; font-size: 16px; font-weight: bold; text-align: center;">
-                ✅ Vídeo carregado com sucesso!
+                <div class="success-message">
+                    <span>✅ Vídeo carregado com sucesso!</span>
                 </div>
                 """, 
                 unsafe_allow_html=True
@@ -129,7 +155,14 @@ def render_pdf_panel():
         
         # Mostra mensagem de carregamento na sidebar
         status_placeholder = st.sidebar.empty()
-        status_placeholder.info("Processando documentos...")
+        status_placeholder.markdown(
+            """
+            <div class="info-message">
+                <span>⏳ Processando documentos...</span>
+            </div>
+            """, 
+            unsafe_allow_html=True
+        )
         
         # Salva os arquivos enviados no diretório temporário
         pdf_paths = []
@@ -146,13 +179,19 @@ def render_pdf_panel():
         
         # Verifica se houve erro e atualiza o status
         if documento_info.get('tipo', '').endswith('(erro)'):
-            status_placeholder.error(documento_info.get('conteudo', 'Erro ao processar os PDFs.'))
+            status_placeholder.markdown(
+                f"""
+                <div class="error-message">
+                    <span>❌ {documento_info.get('conteudo', 'Erro ao processar os PDFs.')}</span>
+                </div>
+                """, 
+                unsafe_allow_html=True
+            )
         else:
             status_placeholder.markdown(
                 """
-                <div style="background-color: #d4edda; color: #155724; padding: 10px; 
-                border-radius: 4px; font-size: 16px; font-weight: bold; text-align: center;">
-                ✅ PDFs processados com sucesso!
+                <div class="success-message">
+                    <span>✅ PDFs processados com sucesso!</span>
                 </div>
                 """, 
                 unsafe_allow_html=True
@@ -184,7 +223,14 @@ def render_image_panel():
         
         # Mostra mensagem de carregamento na sidebar
         status_placeholder = st.sidebar.empty()
-        status_placeholder.info("Analisando imagem...")
+        status_placeholder.markdown(
+            """
+            <div class="info-message">
+                <span>⏳ Analisando imagem...</span>
+            </div>
+            """, 
+            unsafe_allow_html=True
+        )
         
         # Processa a imagem
         st.session_state.documento = carrega_imagem(uploaded_image)
@@ -192,13 +238,19 @@ def render_image_panel():
         
         # Verifica se houve erro e atualiza o status
         if st.session_state.documento.get('tipo', '').endswith('(erro)'):
-            status_placeholder.error(st.session_state.documento.get('conteudo', 'Erro ao analisar a imagem.'))
+            status_placeholder.markdown(
+                f"""
+                <div class="error-message">
+                    <span>❌ {st.session_state.documento.get('conteudo', 'Erro ao analisar a imagem.')}</span>
+                </div>
+                """, 
+                unsafe_allow_html=True
+            )
         else:
             status_placeholder.markdown(
                 """
-                <div style="background-color: #d4edda; color: #155724; padding: 10px; 
-                border-radius: 4px; font-size: 16px; font-weight: bold; text-align: center;">
-                ✅ Imagem analisada com sucesso!
+                <div class="success-message">
+                    <span>✅ Imagem analisada com sucesso!</span>
                 </div>
                 """, 
                 unsafe_allow_html=True
@@ -230,9 +282,8 @@ def render_chat_panel():
         st.session_state.fonte_dados = "Chat"
         st.sidebar.markdown(
             """
-            <div style="background-color: #d4edda; color: #155724; padding: 10px; 
-            border-radius: 4px; font-size: 16px; font-weight: bold; text-align: center;">
-            ✅ Chat livre ativado!
+            <div class="success-message">
+                <span>✅ Chat livre ativado!</span>
             </div>
             """, 
             unsafe_allow_html=True

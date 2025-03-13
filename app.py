@@ -98,7 +98,15 @@ footer()
 
 # Exibe uma mensagem de boas-vindas se for a primeira execução da sessão
 if not st.session_state.mensagens:
-    st.info(
-        """👋 Bem-vindo ao TARS! Selecione uma fonte de dados na barra lateral para começar. 
-        Você pode carregar sites, vídeos do YouTube, documentos PDF ou simplesmente iniciar um chat livre."""
+    st.markdown(
+        """
+        <div style="padding: 15px; border-radius: 8px; background-color: var(--info-color); color: var(--info-text);">
+            <span style="font-size: 1.2rem;">👋 Bem-vindo ao TARS!</span>
+            <p style="margin-top: 8px;">
+                Selecione uma fonte de dados na barra lateral para começar. 
+                Você pode carregar sites, vídeos do YouTube, documentos PDF ou simplesmente iniciar um chat livre.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True
     )
