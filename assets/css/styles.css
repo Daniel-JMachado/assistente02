@@ -43,6 +43,7 @@ footer[data-testid="stFooter"] {
   margin-bottom: 2rem;
   padding-bottom: 1rem;
   border-bottom: 2px solid var(--primary-light);
+  font-family: 'Arial', sans-serif; /* Alterar a fonte */
 }
 
 .tars-logo {
@@ -65,10 +66,12 @@ footer[data-testid="stFooter"] {
   padding: 0;
   color: var(--primary-color);
   letter-spacing: 1px;
+  font-family: 'Arial', sans-serif; /* Alterar a fonte */
 }
 
 .tars-icon {
   font-size: 2.5rem;
+  font-family: 'Arial', sans-serif; /* Alterar a fonte */
 }
 
 /* Container principal */
@@ -77,6 +80,7 @@ footer[data-testid="stFooter"] {
   padding-top: 2rem;
   padding-bottom: 3rem;
   margin: 0 auto;
+  font-family: 'Arial', sans-serif; /* Alterar a fonte */
 }
 
 /* Estilos do chat */
@@ -87,11 +91,13 @@ footer[data-testid="stFooter"] {
   box-shadow: 0 4px 6px var(--shadow-color);
   margin-bottom: 20px;
   min-height: 400px;
+  font-family: 'Arial', sans-serif; /* Alterar a fonte */
 }
 
 /* Mensagens de chat */
 .stChatMessage {
   padding: 0.5rem 0;
+  font-family: 'Arial', sans-serif; /* Alterar a fonte */
 }
 
 .stChatMessage [data-testid="stChatMessageContent"] {
@@ -123,6 +129,7 @@ footer[data-testid="stFooter"] {
   border-radius: 24px;
   padding: 10px 20px;
   border: 1px solid #e0e0e0;
+  font-family: 'Arial', sans-serif; /* Alterar a fonte */
 }
 
 .stChatInputContainer button {
@@ -136,6 +143,7 @@ footer[data-testid="stFooter"] {
   border-radius: 8px;
   font-weight: 500;
   transition: all 0.2s ease;
+  font-family: 'Arial', sans-serif; /* Alterar a fonte */
 }
 
 .tars-button:hover {
@@ -151,6 +159,7 @@ footer[data-testid="stFooter"] {
   margin-bottom: 15px;
   box-shadow: 0 2px 5px var(--shadow-color);
   border-left: 4px solid var(--primary-color);
+  font-family: 'Arial', sans-serif; /* Alterar a fonte */
 }
 
 .source-panel h4 {
@@ -165,6 +174,7 @@ footer[data-testid="stFooter"] {
   padding: 10px;
   border-radius: 8px;
   box-shadow: 0 2px 4px var(--shadow-color);
+  font-family: 'Arial', sans-serif; /* Alterar a fonte */
 }
 
 /* Status e informações */
@@ -173,12 +183,14 @@ footer[data-testid="stFooter"] {
   color: var(--text-secondary);
   font-style: italic;
   margin-top: 8px;
+  font-family: 'Arial', sans-serif; /* Alterar a fonte */
 }
 
 /* Alterações na sidebar do Streamlit */
 section[data-testid="stSidebar"] {
   background-color: var(--background-light);
   border-right: 1px solid #e0e0e0;
+  font-family: 'Arial', sans-serif; /* Alterar a fonte */
 }
 
 section[data-testid="stSidebar"] > div {
@@ -188,19 +200,30 @@ section[data-testid="stSidebar"] > div {
 /* Mensagens de feedback */
 div[data-baseweb="notification"] {
   border-radius: 8px;
+  font-family: 'Arial', sans-serif; /* Alterar a fonte */
+}
+
+/* Mensagens de aviso */
+.stAlert {
+  background-color: #ffcccb; /* Cor de fundo para mensagens de aviso */
+  color: #d8000c; /* Cor do texto para mensagens de aviso */
+  font-family: 'Arial', sans-serif; /* Alterar a fonte */
 }
 
 /* Adaptar para dispositivos móveis */
 @media (max-width: 768px) {
   .tars-title {
     font-size: 2rem;
+    font-family: 'Arial', sans-serif; /* Alterar a fonte */
   }
   
   .tars-icon {
     font-size: 2rem;
+    font-family: 'Arial', sans-serif; /* Alterar a fonte */
   }
   
   .main .block-container {
     padding: 1rem;
+    font-family: 'Arial', sans-serif; /* Alterar a fonte */
   }
 }
