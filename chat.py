@@ -1,4 +1,5 @@
 import os
+import streamlit as st
 from dotenv import load_dotenv
 from anthropic import Anthropic # type: ignore
 from langchain_community.document_loaders import WebBaseLoader
@@ -14,7 +15,7 @@ warnings.filterwarnings("ignore")
 load_dotenv()
 
 # Inicializa o cliente Anthropic diretamente (sem usar LangChain)
-anthropic_api_key = os.getenv('ANTHROPIC_API_KEY')
+anthropic_api_key = st.secrets["ANTHROPIC_API_KEY"]
 if not anthropic_api_key:
     raise ValueError("ANTHROPIC_API_KEY não encontrada no arquivo .env")
 
