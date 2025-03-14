@@ -87,12 +87,25 @@ def carrega_youtube(url_youtube=None):
         
         documento = ""
         for item in transcript_data:
-            texto = item.get('text', '')
-            start = item.get('start', 0)
-            minutos = int(start // 60)
-            segundos = int(start % 60)
-            timestamp = f"{minutos:02d}:{segundos:02d}"
-            documento += f"[{timestamp}] {texto}\n"
+            # Corrigido para trabalhar com objetos FetchedTranscriptSnippet
+            try:
+                # Trata como dicionário primeiro
+                if isinstance(item, dict):
+                    texto = item.get('text', '')
+                    start = item.get('start', 0)
+                # Se não for dicionário, tenta acessar como objeto com atributos
+                else:
+                    # Acessa diretamente os atributos do objeto
+                    texto = getattr(item, 'text', '')
+                    start = getattr(item, 'start', 0)
+                
+                minutos = int(start // 60)
+                segundos = int(start % 60)
+                timestamp = f"{minutos:02d}:{segundos:02d}"
+                documento += f"[{timestamp}] {texto}\n"
+            except Exception as e:
+                print(f"Erro ao processar item da transcrição: {str(e)}")
+                continue
             
         # Extrai o título do vídeo
         titulo = "Vídeo do YouTube"
