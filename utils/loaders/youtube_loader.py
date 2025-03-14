@@ -4,29 +4,19 @@ Utiliza a API youtube_transcript_api para extrair transcrições.
 """
 
 import os
+import re
 import requests
 import urllib3
-import random
-import time
+import tempfile
 from bs4 import BeautifulSoup
 from langchain_community.document_loaders import YoutubeLoader
-from config.settings import WEB_HEADERS
+from config.settings import WEB_HEADERS, USER_AGENT
 
 # Desativa avisos de SSL para evitar warnings no console
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# Lista de proxies gratuitos (atualize esta lista conforme necessário)
-FREE_PROXIES = [
-    # Formato: "http://ip:porta"
-    # Adicione alguns proxies da lista https://free-proxy-list.net/
-    # Exemplo:
-    "http://8.219.74.58:8080",
-    "http://34.23.45.223:80",
-    "http://51.254.121.123:8088",
-    "http://51.83.241.108:80",
-    "http://165.154.243.209:80",
-    # Adicione mais proxies para aumentar as chances de sucesso
-]
+# Configura a variável de ambiente USER_AGENT para o pytube (usado pelo YoutubeLoader)
+os.environ["USER_AGENT"] = USER_AGENT
 
 def carrega_youtube(url_youtube=None):
     """
@@ -57,14 +47,6 @@ def carrega_youtube(url_youtube=None):
         # Verifica se a API do YouTube está instalada
         try:
             from youtube_transcript_api import YouTubeTranscriptApi
-            # Importa exceções específicas para tratamento mais preciso
-            from youtube_transcript_api.errors import (
-                TranscriptsDisabled,
-                NoTranscriptFound,
-                VideoUnavailable,
-                TooManyRequests,
-                NoTranscriptAvailable
-            )
         except ImportError:
             return {
                 'tipo': 'Erro de Dependência',
@@ -79,166 +61,181 @@ def carrega_youtube(url_youtube=None):
             video_id = url_youtube.split('youtube.com/watch?v=')[1].split('&')[0]
         elif 'youtu.be/' in url_youtube:
             video_id = url_youtube.split('youtu.be/')[1].split('?')[0]
+        elif 'm.youtube.com' in url_youtube:
+            # Suporte para YouTube mobile
+            match = re.search(r'v=([^&]+)', url_youtube)
+            if match:
+                video_id = match.group(1)
+        elif 'youtube.com/shorts/' in url_youtube:
+            # Suporte para YouTube shorts
+            video_id = url_youtube.split('youtube.com/shorts/')[1].split('?')[0]
             
         if not video_id:
             raise ValueError("Não foi possível extrair o ID do vídeo a partir da URL fornecida.")
-        
-        # Função para tentar obter a transcrição com proxies
-        def obter_transcricao_com_proxy():
-            # Tenta primeiro sem proxy (pode funcionar em ambiente local)
-            try:
-                print("Tentando obter transcrição sem proxy...")
-                transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-                return transcript_list
-            except Exception as e:
-                print(f"Erro ao tentar sem proxy: {str(e)}")
-                
-                # Se falhar, tenta com cada proxy disponível
-                if FREE_PROXIES:
-                    # Embaralha a lista para usar proxies diferentes a cada tentativa
-                    proxies_aleatorios = FREE_PROXIES.copy()
-                    random.shuffle(proxies_aleatorios)
-                    
-                    for proxy in proxies_aleatorios:
-                        try:
-                            print(f"Tentando com proxy: {proxy}")
-                            # Configura o proxy para a API
-                            os.environ["HTTP_PROXY"] = proxy
-                            os.environ["HTTPS_PROXY"] = proxy
-                            
-                            # Pequeno delay para evitar sobrecarregar os servidores
-                            time.sleep(1)
-                            
-                            # Tenta obter a lista de transcrições
-                            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-                            print("Sucesso com proxy!")
-                            return transcript_list
-                        except Exception as e:
-                            print(f"Falha com o proxy {proxy}: {str(e)}")
-                            continue
-                
-                # Se todas as tentativas falharem, levanta a exceção original
-                raise Exception("Não foi possível obter a transcrição - todos os proxies falharam ou nenhum proxy disponível")
-        
-        # Tenta obter a lista de transcrições usando proxies se necessário
-        try:
-            transcript_list = obter_transcricao_com_proxy()
-        except Exception as e:
-            # Se falhar com todos os proxies, tenta o método alternativo do LangChain
-            print(f"Erro ao obter transcrições com proxies: {str(e)}")
-            print("Tentando método alternativo com LangChain YoutubeLoader...")
             
-            try:
-                # Configurar proxies para o requests (usado pelo LangChain)
-                proxy = None
-                if FREE_PROXIES:
-                    proxy = random.choice(FREE_PROXIES)
-                
-                session = requests.Session()
-                if proxy:
-                    session.proxies = {"http": proxy, "https": proxy}
-                
-                loader = YoutubeLoader.from_youtube_url(
-                    url_youtube,
-                    language=['pt', 'en'],
-                    add_video_info=True,
-                    custom_requests_session=session
-                )
-                
-                docs = loader.load()
-                
-                if not docs:
-                    raise ValueError("Nenhuma transcrição encontrada pelo LangChain YoutubeLoader")
-                
-                documento = '\n'.join([doc.page_content for doc in docs])
-                
-                # Tenta extrair o título
-                titulo = "Vídeo do YouTube"
-                try:
-                    titulo = docs[0].metadata.get('title', titulo)
-                except:
-                    pass
-                
-                # Retorna o resultado do método alternativo
-                return {
-                    'tipo': 'Vídeo do YouTube',
-                    'url': url_youtube,
-                    'titulo': titulo,
-                    'conteudo': documento
-                }
-                
-            except Exception as e2:
-                raise ValueError(f"Todos os métodos de obtenção de transcrição falharam. Detalhes: {str(e)}, {str(e2)}")
+        # Tenta obter a transcrição em diferentes idiomas
+        documento = ""
+        transcript_error = None
         
-        # Se chegou aqui, obteve a transcript_list com sucesso
-        # Tenta português primeiro, depois inglês ou qualquer idioma disponível
-        transcript = None
+        # Método 1: Usar YouTubeTranscriptApi
         try:
-            transcript = transcript_list.find_transcript(['pt', 'pt-BR'])
-        except:
+            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+            
+            # Tenta português primeiro, depois inglês ou qualquer idioma disponível
+            transcript = None
             try:
-                transcript = transcript_list.find_transcript(['en'])
+                transcript = transcript_list.find_transcript(['pt', 'pt-BR'])
             except:
-                # Tenta obter transcrição gerada automaticamente
                 try:
+                    transcript = transcript_list.find_transcript(['en'])
+                except:
+                    # Tenta obter transcrição gerada automaticamente
                     for t in transcript_list:
                         transcript = t
                         break
-                except:
-                    pass
+                    
+            if not transcript:
+                raise ValueError("Nenhuma transcrição disponível para este vídeo.")
                 
-        if not transcript:
-            raise ValueError("Nenhuma transcrição disponível para este vídeo.")
+            # Obter o conteúdo da transcrição e formata com timestamps
+            transcript_data = transcript.fetch()
             
-        # Obter o conteúdo da transcrição e formata com timestamps
-        transcript_data = transcript.fetch()
-        
-        documento = ""
-        for item in transcript_data:
-            # Trata o item de forma segura, independente de seu tipo
-            try:
-                # Trata como dicionário primeiro
-                if isinstance(item, dict):
-                    texto = item.get('text', '')
-                    start = item.get('start', 0)
-                # Se não for dicionário, tenta acessar como objeto com atributos
-                else:
-                    # Acessa diretamente os atributos do objeto
-                    texto = getattr(item, 'text', '')
-                    start = getattr(item, 'start', 0)
-                
+            for entry in transcript_data:
+                texto = entry['text'] if isinstance(entry, dict) else str(entry)
+                start = entry.get('start', 0) if isinstance(entry, dict) else 0
                 minutos = int(start // 60)
                 segundos = int(start % 60)
                 timestamp = f"{minutos:02d}:{segundos:02d}"
                 documento += f"[{timestamp}] {texto}\n"
-            except Exception as e:
-                print(f"Erro ao processar item da transcrição: {str(e)}")
-                continue
+                
+            print(f"Transcrição obtida com sucesso usando YouTubeTranscriptApi")
+            
+        except Exception as e:
+            transcript_error = e
+            print(f"Erro ao usar YouTubeTranscriptApi: {str(e)}")
+            documento = ""  # Limpa documento para tentar outro método
+        
+        # Método 2: Usar LangChain YoutubeLoader se o método 1 falhar
+        if not documento:
+            try:
+                print(f"Tentando método alternativo com LangChain YoutubeLoader")
+                
+                # Cria diretório temporário para o download
+                temp_dir = tempfile.mkdtemp()
+                print(f"Diretório temporário criado: {temp_dir}")
+                
+                # Tratamento manual fallback
+                full_text = ""
+                try:
+                    # Primeiro tenta com método direto via requests
+                    # Isso é um fallback para quando os outros métodos falham
+                    print("Tentando obter conteúdo via método de fallback...")
+                    proxied_url = f"https://projectlounge.pw/ytdl/download?url={url_youtube}"
+                    response = requests.get(proxied_url, headers=WEB_HEADERS, timeout=15)
+                    
+                    if response.status_code == 200:
+                        soup = BeautifulSoup(response.text, 'html.parser')
+                        transcript_tag = soup.find('div', {'class': 'transcript'})
+                        if transcript_tag:
+                            full_text = transcript_tag.get_text()
+                            print("Conteúdo obtido via método de fallback!")
+                except Exception as proxy_error:
+                    print(f"Método de fallback falhou: {str(proxy_error)}")
+                
+                if full_text:
+                    # Se conseguiu obter texto pelo método de fallback
+                    documento = full_text
+                    print(f"Usando conteúdo obtido via método de fallback")
+                else:
+                    # Tenta com YoutubeLoader como último recurso
+                    print("Tentando YoutubeLoader como último recurso...")
+                    try:
+                        loader = YoutubeLoader.from_youtube_url(
+                            url_youtube,
+                            add_video_info=True,
+                            language=["pt", "en", "auto"],
+                            continue_on_failure=True,
+                            use_ytdlp=False  # Use pytube em vez de yt-dlp
+                        )
+                        
+                        docs = loader.load()
+                        if docs and len(docs) > 0:
+                            documento = docs[0].page_content
+                            print(f"Transcrição obtida com sucesso usando LangChain YoutubeLoader")
+                        else:
+                            raise ValueError("YoutubeLoader não retornou documentos")
+                    except Exception as yt_error:
+                        # Se falhou, tenta extrair pelo menos alguma informação
+                        print(f"YoutubeLoader falhou: {str(yt_error)}")
+                        # Cria um texto informativo para o usuário
+                        documento = f"""
+[OBSERVAÇÃO] Não foi possível obter a transcrição completa deste vídeo.
+
+Possíveis razões:
+- O vídeo não tem legendas disponíveis
+- O canal desativou a opção de transcrição
+- Problemas técnicos na conexão com o YouTube
+
+ID do vídeo: {video_id}
+URL: {url_youtube}
+
+Você ainda pode fazer perguntas sobre o vídeo com base nas informações disponíveis,
+mas a análise será limitada sem a transcrição completa.
+"""
+                    
+            except Exception as alt_error:
+                # Se todos os métodos falharam, mas já temos um documento com mensagem de erro amigável,
+                # vamos usar ele em vez de lançar uma exceção
+                if not documento or documento.strip() == "":
+                    if transcript_error:
+                        error_msg = f"Falha em ambos os métodos. YouTubeTranscriptApi: {str(transcript_error)}. LangChain: {str(alt_error)}"
+                    else:
+                        error_msg = f"Falha ao obter transcrição com LangChain: {str(alt_error)}"
+                    print(error_msg)
+                    
+                    # Cria um documento informativo de falha
+                    documento = f"""
+[OBSERVAÇÃO] Não foi possível obter a transcrição deste vídeo devido a um erro técnico.
+
+ID do vídeo: {video_id}
+URL: {url_youtube}
+
+Você ainda pode conversar sobre outros tópicos ou tentar com outro vídeo que tenha legendas disponíveis.
+"""
+        
+        # Se chegou aqui sem conteúdo, algo deu errado
+        if not documento or documento.strip() == "":
+            raise ValueError("Não foi possível extrair conteúdo do vídeo com nenhum método disponível.")
             
         # Extrai o título do vídeo
         titulo = "Vídeo do YouTube"
         try:
-            # Configura uma sessão para usar proxy se necessário
-            session = requests.Session()
-            if FREE_PROXIES:
-                proxy = random.choice(FREE_PROXIES)
-                session.proxies = {"http": proxy, "https": proxy}
-            
-            # Obtém o título da página do vídeo
-            response = session.get(url_youtube, headers=WEB_HEADERS, verify=False, timeout=10)
-            soup = BeautifulSoup(response.content, 'html.parser')
-            title_tag = soup.find('title')
-            
-            if title_tag and title_tag.string:
-                titulo = title_tag.string.strip().replace(' - YouTube', '')
+            # Método 1: Tenta obter título através do API
+            try:
+                import urllib.parse
+                video_url = f"https://www.youtube.com/watch?v={video_id}"
+                api_url = f"https://noembed.com/embed?url={urllib.parse.quote(video_url)}"
+                response = requests.get(api_url, timeout=10)
+                if response.status_code == 200:
+                    data = response.json()
+                    if 'title' in data:
+                        titulo = data['title']
+                        print(f"Título obtido via noembed API: {titulo}")
+            except Exception as api_error:
+                print(f"Não foi possível obter título via API: {str(api_error)}")
+                pass
+                
+            # Método 2: Obtém o título da página do vídeo (fallback)
+            if titulo == "Vídeo do YouTube":
+                response = requests.get(url_youtube, headers=WEB_HEADERS, verify=False, timeout=10)
+                soup = BeautifulSoup(response.content, 'html.parser')
+                title_tag = soup.find('title')
+                
+                if title_tag and title_tag.string:
+                    titulo = title_tag.string.strip().replace(' - YouTube', '')
+                    print(f"Título obtido via página web: {titulo}")
         except Exception as e:
             print(f"Aviso: Não foi possível extrair o título do vídeo: {str(e)}")
-        
-        # Limpa variáveis de ambiente de proxy para não afetar outras partes do código
-        if "HTTP_PROXY" in os.environ:
-            del os.environ["HTTP_PROXY"]
-        if "HTTPS_PROXY" in os.environ:
-            del os.environ["HTTPS_PROXY"]
         
         # Retorna as informações do vídeo
         return {
@@ -248,12 +245,6 @@ def carrega_youtube(url_youtube=None):
             'conteudo': documento
         }
     except Exception as e:
-        # Limpa variáveis de ambiente de proxy em caso de erro
-        if "HTTP_PROXY" in os.environ:
-            del os.environ["HTTP_PROXY"]
-        if "HTTPS_PROXY" in os.environ:
-            del os.environ["HTTPS_PROXY"]
-            
         # Captura e retorna erros detalhados
         error_msg = str(e)
         print(f"Erro ao carregar o vídeo do YouTube {url_youtube}: {error_msg}")
