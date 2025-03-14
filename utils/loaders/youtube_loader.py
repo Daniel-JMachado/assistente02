@@ -6,12 +6,27 @@ Utiliza a API youtube_transcript_api para extrair transcrições.
 import os
 import requests
 import urllib3
+import random
+import time
 from bs4 import BeautifulSoup
 from langchain_community.document_loaders import YoutubeLoader
 from config.settings import WEB_HEADERS
 
 # Desativa avisos de SSL para evitar warnings no console
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# Lista de proxies gratuitos (atualize esta lista conforme necessário)
+FREE_PROXIES = [
+    # Formato: "http://ip:porta"
+    # Adicione alguns proxies da lista https://free-proxy-list.net/
+    # Exemplo:
+    "http://8.219.74.58:8080",
+    "http://34.23.45.223:80",
+    "http://51.254.121.123:8088",
+    "http://51.83.241.108:80",
+    "http://165.154.243.209:80",
+    # Adicione mais proxies para aumentar as chances de sucesso
+]
 
 def carrega_youtube(url_youtube=None):
     """
@@ -42,6 +57,14 @@ def carrega_youtube(url_youtube=None):
         # Verifica se a API do YouTube está instalada
         try:
             from youtube_transcript_api import YouTubeTranscriptApi
+            # Importa exceções específicas para tratamento mais preciso
+            from youtube_transcript_api.errors import (
+                TranscriptsDisabled,
+                NoTranscriptFound,
+                VideoUnavailable,
+                TooManyRequests,
+                NoTranscriptAvailable
+            )
         except ImportError:
             return {
                 'tipo': 'Erro de Dependência',
@@ -59,10 +82,95 @@ def carrega_youtube(url_youtube=None):
             
         if not video_id:
             raise ValueError("Não foi possível extrair o ID do vídeo a partir da URL fornecida.")
-            
-        # Tenta obter a transcrição em diferentes idiomas
-        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
         
+        # Função para tentar obter a transcrição com proxies
+        def obter_transcricao_com_proxy():
+            # Tenta primeiro sem proxy (pode funcionar em ambiente local)
+            try:
+                print("Tentando obter transcrição sem proxy...")
+                transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+                return transcript_list
+            except Exception as e:
+                print(f"Erro ao tentar sem proxy: {str(e)}")
+                
+                # Se falhar, tenta com cada proxy disponível
+                if FREE_PROXIES:
+                    # Embaralha a lista para usar proxies diferentes a cada tentativa
+                    proxies_aleatorios = FREE_PROXIES.copy()
+                    random.shuffle(proxies_aleatorios)
+                    
+                    for proxy in proxies_aleatorios:
+                        try:
+                            print(f"Tentando com proxy: {proxy}")
+                            # Configura o proxy para a API
+                            os.environ["HTTP_PROXY"] = proxy
+                            os.environ["HTTPS_PROXY"] = proxy
+                            
+                            # Pequeno delay para evitar sobrecarregar os servidores
+                            time.sleep(1)
+                            
+                            # Tenta obter a lista de transcrições
+                            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+                            print("Sucesso com proxy!")
+                            return transcript_list
+                        except Exception as e:
+                            print(f"Falha com o proxy {proxy}: {str(e)}")
+                            continue
+                
+                # Se todas as tentativas falharem, levanta a exceção original
+                raise Exception("Não foi possível obter a transcrição - todos os proxies falharam ou nenhum proxy disponível")
+        
+        # Tenta obter a lista de transcrições usando proxies se necessário
+        try:
+            transcript_list = obter_transcricao_com_proxy()
+        except Exception as e:
+            # Se falhar com todos os proxies, tenta o método alternativo do LangChain
+            print(f"Erro ao obter transcrições com proxies: {str(e)}")
+            print("Tentando método alternativo com LangChain YoutubeLoader...")
+            
+            try:
+                # Configurar proxies para o requests (usado pelo LangChain)
+                proxy = None
+                if FREE_PROXIES:
+                    proxy = random.choice(FREE_PROXIES)
+                
+                session = requests.Session()
+                if proxy:
+                    session.proxies = {"http": proxy, "https": proxy}
+                
+                loader = YoutubeLoader.from_youtube_url(
+                    url_youtube,
+                    language=['pt', 'en'],
+                    add_video_info=True,
+                    custom_requests_session=session
+                )
+                
+                docs = loader.load()
+                
+                if not docs:
+                    raise ValueError("Nenhuma transcrição encontrada pelo LangChain YoutubeLoader")
+                
+                documento = '\n'.join([doc.page_content for doc in docs])
+                
+                # Tenta extrair o título
+                titulo = "Vídeo do YouTube"
+                try:
+                    titulo = docs[0].metadata.get('title', titulo)
+                except:
+                    pass
+                
+                # Retorna o resultado do método alternativo
+                return {
+                    'tipo': 'Vídeo do YouTube',
+                    'url': url_youtube,
+                    'titulo': titulo,
+                    'conteudo': documento
+                }
+                
+            except Exception as e2:
+                raise ValueError(f"Todos os métodos de obtenção de transcrição falharam. Detalhes: {str(e)}, {str(e2)}")
+        
+        # Se chegou aqui, obteve a transcript_list com sucesso
         # Tenta português primeiro, depois inglês ou qualquer idioma disponível
         transcript = None
         try:
@@ -87,7 +195,7 @@ def carrega_youtube(url_youtube=None):
         
         documento = ""
         for item in transcript_data:
-            # Corrigido para trabalhar com objetos FetchedTranscriptSnippet
+            # Trata o item de forma segura, independente de seu tipo
             try:
                 # Trata como dicionário primeiro
                 if isinstance(item, dict):
@@ -110,8 +218,14 @@ def carrega_youtube(url_youtube=None):
         # Extrai o título do vídeo
         titulo = "Vídeo do YouTube"
         try:
+            # Configura uma sessão para usar proxy se necessário
+            session = requests.Session()
+            if FREE_PROXIES:
+                proxy = random.choice(FREE_PROXIES)
+                session.proxies = {"http": proxy, "https": proxy}
+            
             # Obtém o título da página do vídeo
-            response = requests.get(url_youtube, headers=WEB_HEADERS, verify=False)
+            response = session.get(url_youtube, headers=WEB_HEADERS, verify=False, timeout=10)
             soup = BeautifulSoup(response.content, 'html.parser')
             title_tag = soup.find('title')
             
@@ -119,6 +233,12 @@ def carrega_youtube(url_youtube=None):
                 titulo = title_tag.string.strip().replace(' - YouTube', '')
         except Exception as e:
             print(f"Aviso: Não foi possível extrair o título do vídeo: {str(e)}")
+        
+        # Limpa variáveis de ambiente de proxy para não afetar outras partes do código
+        if "HTTP_PROXY" in os.environ:
+            del os.environ["HTTP_PROXY"]
+        if "HTTPS_PROXY" in os.environ:
+            del os.environ["HTTPS_PROXY"]
         
         # Retorna as informações do vídeo
         return {
@@ -128,6 +248,12 @@ def carrega_youtube(url_youtube=None):
             'conteudo': documento
         }
     except Exception as e:
+        # Limpa variáveis de ambiente de proxy em caso de erro
+        if "HTTP_PROXY" in os.environ:
+            del os.environ["HTTP_PROXY"]
+        if "HTTPS_PROXY" in os.environ:
+            del os.environ["HTTPS_PROXY"]
+            
         # Captura e retorna erros detalhados
         error_msg = str(e)
         print(f"Erro ao carregar o vídeo do YouTube {url_youtube}: {error_msg}")
